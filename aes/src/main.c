@@ -87,7 +87,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 //all of the printing is YAML parsable.  The robust printing variable solely determines how much text you get.
 #define ROBUST_PRINTING	1
 #define	LOOP_COUNT	2
-#define	CHANGE_RATE	1
+#define	CHANGE_RATE	250
 
 unsigned long ind = 0;
 int local_errors = 0;
@@ -106,7 +106,7 @@ void check_arrays(char *array1, char *array2, int lim, char pre) {
       //block of code for printing errors
       if (!first_error) {
 	if (!in_block && ROBUST_PRINTING) {
-	  xil_printf(" - i: %n\r\n", ind);
+	  xil_printf(" - i: %lu\r\n", ind);
 	  xil_printf("   %c: {%x: %x,", pre, array1[i], array2[i]);
 	  first_error = 1;
 	  in_block = 1;  
@@ -133,7 +133,7 @@ void check_arrays(char *array1, char *array2, int lim, char pre) {
   if (!ROBUST_PRINTING && numberOfErrors > 0) {
     //less prolific printing
     if (!in_block) {
-      xil_printf(" - i: %n\r\n", ind);
+      xil_printf(" - i: %lu\r\n", ind);
       xil_printf("   %c: %i\r\n", pre, numberOfErrors);
       in_block = 1;
     }
@@ -225,7 +225,7 @@ void aes_test(int loops)
 
 	//print an "I am alive" message every once in a awhile
 	if (ind % CHANGE_RATE == 0 && ind != 0) {
-	  xil_printf("# %n, %i\r\n", ind, total_errors);
+	  xil_printf("# %lu, %i\r\n", ind, total_errors);
 	}
       }
     }

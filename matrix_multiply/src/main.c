@@ -145,7 +145,7 @@ int checker(unsigned long golden_matrix[][SIDE], unsigned long results_matrix[][
 	//checker found an error, print results to screen
 	if (!first_error) {
 	  if (!in_block && ROBUST_PRINTING) {
-	    xil_printf(" - i: %n\r\n", ind);
+	    xil_printf(" - i: %lu\r\n", ind);
 	    xil_printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
 	    first_error = 1;
 	    in_block = 1;
@@ -172,7 +172,7 @@ int checker(unsigned long golden_matrix[][SIDE], unsigned long results_matrix[][
   
   if (!ROBUST_PRINTING && (num_of_errors > 0)) {
     if (!in_block) {
-      xil_printf(" - i: %n\r\n", ind);
+      xil_printf(" - i: %lu\r\n", ind);
       xil_printf("   E: %i\r\n", num_of_errors);
       in_block = 1;
     }
@@ -208,7 +208,7 @@ void matrix_multiply_test(int loops) {
     
     //acking to see if alive, as well as changing input values
     if (ind % CHANGE_RATE == 0) {
-      xil_printf("# %n, %i\r\n", ind, total_errors);
+      xil_printf("# %lu, %i\r\n", ind, total_errors);
       seed_value = -1;
       init_matrices();
       //have to recompute the golden

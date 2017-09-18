@@ -115,7 +115,7 @@ int calc_sum(int *array) {
       //there is an error, start block of code for printing
       if (!first_error) {
 	if (!in_block && ROBUST_PRINTING) {
-	  xil_printf(" - i: %n\r\n", ind);
+	  xil_printf(" - i: %lu\r\n", ind);
 	  xil_printf("   E: {%i: %i,", i, array[i]);
 	  first_error = 1;
 	  in_block = 1;  
@@ -146,7 +146,7 @@ int calc_sum(int *array) {
   //handle the less robust printing case
   if (!ROBUST_PRINTING && numberOfErrors > 0) {
     if (!in_block) {
-      xil_printf(" - i: %n\r\n", ind);
+      xil_printf(" - i: %lu\r\n", ind);
       xil_printf("   E: %i\r\n", numberOfErrors);
       in_block = 1;
     }
@@ -165,7 +165,7 @@ int calc_sum(int *array) {
       local_errors++;
 
       if (!in_block) {
-	xil_printf(" - i: %n\r\n", ind);
+	xil_printf(" - i: %lu\r\n", ind);
 	xil_printf("   S: {%i: %i}\r\n", SUM_CONST, sum);
 	first_error = 1;
 	in_block = 1;
@@ -194,7 +194,7 @@ void cache_test(int loops) {
     
     //acking every few seconds to make certain the program is still alive/
     if (ind % CHANGE_RATE == 0 && ind != 0) {
-      xil_printf("# %n, %i, %i, %i\r\n", ind, total_errors, tests_with_errors, sum_errors);
+      xil_printf("# %lu, %i, %i, %i\r\n", ind, total_errors, tests_with_errors, sum_errors);
     }
     
     ind++;

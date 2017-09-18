@@ -179,7 +179,7 @@ int checker(int golden_array[], int dut_array[], int sub_test) {
       //an error is found, print the results
       if (!first_error) {
 	if (!in_block && ROBUST_PRINTING) {
-	  xil_printf(" - i: %n, %i\r\n", ind, sub_test);
+	  xil_printf(" - i: %lu, %i\r\n", ind, sub_test);
 	  xil_printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
 	  first_error = 1;
 	  in_block = 1;
@@ -207,7 +207,7 @@ int checker(int golden_array[], int dut_array[], int sub_test) {
   //non-robust printing
   if (!ROBUST_PRINTING && (num_of_errors > 0)) {
     if (!in_block) {
-      xil_printf(" - i: %n, %i\r\n", ind, sub_test);
+      xil_printf(" - i: %lu, %i\r\n", ind, sub_test);
       xil_printf("   E: %i\r\n", num_of_errors);
       in_block = 1;
     }
@@ -261,7 +261,7 @@ void qsort_test(int loops) {
     
     //ack and change input arrays
     if (ind % CHANGE_RATE == 0) {
-      xil_printf("# %n, %i\r\n", ind, total_errors);
+      xil_printf("# %lu, %i\r\n", ind, total_errors);
       seed_value = -1;
       
       //init arrays with new values
