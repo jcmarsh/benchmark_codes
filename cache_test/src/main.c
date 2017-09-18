@@ -69,23 +69,23 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 //
 //*****************************************************************************
 
+// Modified to run on a Zybo board. - JM
+// UART changed to 115200, 8 bits, no parity, 1 stop - JM
 
-#include <msp430.h>
-#include <string.h>
+#include "platform.h"
+#include <xgpio.h>
 
-void sendByte(char);
-void printf(char *, ...);
-void initUART(void);
-void initMSP430();
-void cache_test(void);
+void cache_test(int loops);
 void init_array(int array[]);
 int calc_sum(int array[]);
 
-#define 	robust_printing			1
-#define		data_array_elements		600
-#define		sum_const			-16908
+#define 	ROBUST_PRINTING			1
+#define		DATA_ARRAY_ELEMENTS		600 // TODO: Zynq likely has more cache...
+#define		SUM_CONST			179700
+#define		LOOP_COUNT			2
+#define		PRINT_MOD			1
 
-int array[data_array_elements];
+int array[DATA_ARRAY_ELEMENTS];
 
 unsigned long int ind = 0;
 int local_errors = 0;
@@ -94,9 +94,9 @@ int in_block = 0;
 
 void init_array(int *array) {
   int i = 0;
-  
-  for ( i = 0; i < data_array_elements; i++ ) {
-    array[i] = i;  
+
+  for ( i = 0; i < DATA_ARRAY_ELEMENTS; i++ ) {
+    array[i] = i;
   }
 }
 
@@ -106,7 +106,7 @@ int calc_sum(int *array) {
   int first_error = 0;
   int numberOfErrors = 0;
   
-  for ( i = 0; i < data_array_elements; i++) {
+  for ( i = 0; i < DATA_ARRAY_ELEMENTS; i++) {
     sum += array[i];
     
     if ( array[i] != i ) {
@@ -114,20 +114,20 @@ int calc_sum(int *array) {
       
       //there is an error, start block of code for printing
       if (!first_error) {
-	if (!in_block && robust_printing) {
-	  printf(" - i: %n\r\n", ind);
-	  printf("   E: {%i: %i,", i, array[i]);
+	if (!in_block && ROBUST_PRINTING) {
+	  xil_printf(" - i: %n\r\n", ind);
+	  xil_printf("   E: {%i: %i,", i, array[i]);
 	  first_error = 1;
 	  in_block = 1;  
 	}
-	else if (in_block && robust_printing){
-	  printf("   E: {%i: %i,", i, array[i]);
+	else if (in_block && ROBUST_PRINTING){
+	  xil_printf("   E: {%i: %i,", i, array[i]);
 	  first_error = 1;
 	}
       }
       else{
-	if (robust_printing)
-	  printf("%i: %i,", i, array[i]);
+	if (ROBUST_PRINTING)
+	  xil_printf("%i: %i,", i, array[i]);
       }
 
       //fix and record error
@@ -138,25 +138,25 @@ int calc_sum(int *array) {
   }
   
   //finish printing
-  if (first_error && robust_printing) {
-    printf("}\r\n");
+  if (first_error && ROBUST_PRINTING) {
+    xil_printf("}\r\n");
     first_error = 0;
   }
 
   //handle the less robust printing case
-  if (!robust_printing && numberOfErrors > 0) {
+  if (!ROBUST_PRINTING && numberOfErrors > 0) {
     if (!in_block) {
-      printf(" - i: %n\r\n", ind);
-      printf("   E: %i\r\n", numberOfErrors);
+      xil_printf(" - i: %n\r\n", ind);
+      xil_printf("   E: %i\r\n", numberOfErrors);
       in_block = 1;
     }
     else {
-      printf("   E: %i\r\n", numberOfErrors);
+      xil_printf("   E: %i\r\n", numberOfErrors);
     }
   }
 
   //check for a math error
-  if (sum != sum_const) {
+  if (sum != SUM_CONST) {
     //the difference between robust and not robust printing is trivial for this one, so let it go
 
     //only count sum errors if there have been no other errors
@@ -165,13 +165,13 @@ int calc_sum(int *array) {
       local_errors++;
 
       if (!in_block) {
-	printf(" - i: %n\r\n", ind);
-	printf("   S: {%i: %i}\r\n", sum_const, sum);
+	xil_printf(" - i: %n\r\n", ind);
+	xil_printf("   S: {%i: %i}\r\n", SUM_CONST, sum);
 	first_error = 1;
 	in_block = 1;
       }
       else if (in_block){
-	printf("   S: {%i: %i}\r\n", sum_const, sum);
+	xil_printf("   S: {%i: %i}\r\n", SUM_CONST, sum);
 	first_error = 1;
       }
     }
@@ -180,7 +180,7 @@ int calc_sum(int *array) {
   return sum;
 }
 
-void cache_test(void) {
+void cache_test(int loops) {
   int sum = 0;
   int total_errors = 0;
   int tests_with_errors = 0;
@@ -188,13 +188,13 @@ void cache_test(void) {
   init_array(array);
 
   // Read Pattern
-  while (1) {
+  while (ind < loops) {
     
     sum = calc_sum(array);
     
     //acking every few seconds to make certain the program is still alive/
-    if (ind % 1000 == 0 && ind != 0) {
-      printf("# %n, %i, %i, %i\r\n", ind, total_errors, tests_with_errors, sum_errors);
+    if (ind % PRINT_MOD == 0 && ind != 0) {
+      xil_printf("# %n, %i, %i, %i\r\n", ind, total_errors, tests_with_errors, sum_errors);
     }
     
     ind++;
@@ -212,87 +212,30 @@ int main(void)
 {
 
   //init part
-  initMSP430();
+  init_platform();
   
   //print YAML header
-  printf("\r\n---\r\n");
-  printf("hw: msp430f2619\r\n");
-  printf("test: cache\r\n");
-  printf("mit: none\r\n");
-  printf("printing: %i\r\n", robust_printing);
-  printf("Array size: %i\r\n", data_array_elements);
-  printf("ver: 0.1\r\n");
-  printf("fac: LANSCE Nov 2015\r\n");
-  printf("d:\r\n");
-  
+  print("\r\n---\r\n");
+  print("hw: Zybo ZYNQ7010\r\n");
+  print("test: cache\r\n");
+  print("mit: none\r\n");
+  xil_printf("printing: %i\r\n", ROBUST_PRINTING);
+  xil_printf("Array size: %i\r\n", DATA_ARRAY_ELEMENTS);
+  xil_printf("Loop count: %i\r\n", LOOP_COUNT);
+  xil_printf("Print mod: %i\r\n", PRINT_MOD);
+  print("ver: 0.1-zybo\r\n");
+  print("fac: GSFC 2017\r\n");
+  print("d:\r\n");
+
+  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
+  asm("drseus_start_tag:");
+
   //start test
-  cache_test();
-}
+  cache_test(LOOP_COUNT);
 
-void initMSP430() {
-  //MSP430F2619 initialization code
-  WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
-  if (CALBC1_1MHZ==0xFF)		    // If calibration constant erased
-  {
-    while(1);                               // do not load, trap CPU!!
-  }
-  DCOCTL = 0;                               // Select lowest DCOx and MODx settings
-  BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
-  DCOCTL = CALDCO_1MHZ;
-  
-  initUART();
-}
+  asm("drseus_end_tag:");
+  print("safeword ");
+  cleanup_platform();
 
-/**
- * Initializes the UART for 9600 baud with a RX interrupt
- **/
-void initUART(void) {
-  P3SEL = 0x30;                             // P3.4,5 = USCI_A0 TXD/RXD
-  UCA0CTL1 |= UCSSEL_2;                     // SMCLK
-  UCA0BR0 = 104;                            // 1MHz 9600; (104)decimal = 0x068h
-  UCA0BR1 = 0;                              // 1MHz 9600
-  UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
-  UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-}
-
-/**
- * puts() is used by printf() to display or send a string.. This function
- * determines where printf prints to. For this case it sends a string
- * out over UART, another option could be to display the string on an
- * LCD display.
- **/
-void puts(char *s) {
-  char c;
-  
-  // Loops through each character in string 's'
-  while (c = *s++) {
-    sendByte(c);
-  }
-}
-
-/**
- * puts() is used by printf() to display or send a character. This function
- * determines where printf prints to. For this case it sends a character
- * out over UART.
- **/
-void putc(char b) {
-  sendByte(b);
-}
-
-/**
- * Sends a single byte out through UART
- **/
-void sendByte(char byte )
-{
-	while (!(IFG2&UCA0TXIFG)); // USCI_A0 TX buffer ready?
-	UCA0TXBUF = byte; // TX -> RXed character
-}
-
-//  Echo back RXed character, confirm TX buffer is ready first
-#pragma vector=USCIAB0RX_VECTOR
-__interrupt void USCI0RX_ISR(void)
-{
-
-	while (!(IFG2&UCA0TXIFG));                // USCI_A0 TX buffer ready?
-	UCA0TXBUF = UCA0RXBUF;                    // TX -> RXed character
+  return 0;
 }
