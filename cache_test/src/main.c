@@ -83,7 +83,7 @@ int calc_sum(int array[]);
 #define		DATA_ARRAY_ELEMENTS		600 // TODO: Zynq likely has more cache...
 #define		SUM_CONST			179700
 #define		LOOP_COUNT			2
-#define		PRINT_MOD			1
+#define		CHANGE_RATE			1
 
 int array[DATA_ARRAY_ELEMENTS];
 
@@ -193,7 +193,7 @@ void cache_test(int loops) {
     sum = calc_sum(array);
     
     //acking every few seconds to make certain the program is still alive/
-    if (ind % PRINT_MOD == 0 && ind != 0) {
+    if (ind % CHANGE_RATE == 0 && ind != 0) {
       xil_printf("# %n, %i, %i, %i\r\n", ind, total_errors, tests_with_errors, sum_errors);
     }
     
@@ -222,7 +222,7 @@ int main(void)
   xil_printf("printing: %i\r\n", ROBUST_PRINTING);
   xil_printf("Array size: %i\r\n", DATA_ARRAY_ELEMENTS);
   xil_printf("Loop count: %i\r\n", LOOP_COUNT);
-  xil_printf("Print mod: %i\r\n", PRINT_MOD);
+  xil_printf("input change rate: %i\r\n", CHANGE_RATE);
   print("ver: 0.1-zybo\r\n");
   print("fac: GSFC 2017\r\n");
   print("d:\r\n");

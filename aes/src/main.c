@@ -73,9 +73,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 //
 //*****************************************************************************
 
+// Modified to run on a Zybo board. - JM
+// UART changed to 115200, 8 bits, no parity, 1 stop - JM
 
-#include <msp430.h>
-#include <string.h>
+#include "platform.h"
+#include <xgpio.h>
 #include "TI_aes_128.h"
 #include "ECBGFSbox128.h"
 #include "ECBKeySbox128.h"
@@ -83,19 +85,16 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include "ECBVarTxt128.h"
 
 //all of the printing is YAML parsable.  The robust printing variable solely determines how much text you get.
-#define robust_printing		1
+#define ROBUST_PRINTING	1
+#define	LOOP_COUNT	2
+#define	CHANGE_RATE	1
 
 unsigned long ind = 0;
 int local_errors = 0;
 int in_block = 0;
 
-
-void aes_test(void);
+void aes_test(int loops);
 void check_arrays(char array1[], char array2[], int lim, char pre);
-void sendByte(char);
-void printf(char *, ...);
-void initUART(void);
-void initMSP430();
 
 void check_arrays(char *array1, char *array2, int lim, char pre) {
   int first_error = 0;
@@ -106,45 +105,45 @@ void check_arrays(char *array1, char *array2, int lim, char pre) {
     if (array1[i] != array2[i]) {
       //block of code for printing errors
       if (!first_error) {
-	if (!in_block && robust_printing) {
-	  printf(" - i: %n\r\n", ind);
-	  printf("   %c: {%x: %x,", pre, array1[i], array2[i]);
+	if (!in_block && ROBUST_PRINTING) {
+	  xil_printf(" - i: %n\r\n", ind);
+	  xil_printf("   %c: {%x: %x,", pre, array1[i], array2[i]);
 	  first_error = 1;
 	  in_block = 1;  
 	}
-	else if (in_block && robust_printing){
-	  printf("   %c: {%x: %x,", pre, array1[i], array2[i]);
+	else if (in_block && ROBUST_PRINTING){
+	  xil_printf("   %c: {%x: %x,", pre, array1[i], array2[i]);
 	  first_error = 1;
 	}
       }
       else{
-	if (robust_printing)
-	  printf("%x: %x,", array1[i], array2[i]);
+	if (ROBUST_PRINTING)
+	  xil_printf("%x: %x,", array1[i], array2[i]);
       }
       local_errors++;
       numberOfErrors++;
     }
   }
-  if (first_error && robust_printing) {
+  if (first_error && ROBUST_PRINTING) {
     //finish YAML block
-    printf("}\r\n");
+    xil_printf("}\r\n");
     first_error = 0;
   }
   
-  if (!robust_printing && numberOfErrors > 0) {
+  if (!ROBUST_PRINTING && numberOfErrors > 0) {
     //less prolific printing
     if (!in_block) {
-      printf(" - i: %n\r\n", ind);
-      printf("   %c: %i\r\n", pre, numberOfErrors);
+      xil_printf(" - i: %n\r\n", ind);
+      xil_printf("   %c: %i\r\n", pre, numberOfErrors);
       in_block = 1;
     }
     else {
-      printf("   %c: %i\r\n", pre, numberOfErrors);
+      xil_printf("   %c: %i\r\n", pre, numberOfErrors);
     }
   }
 }
 
-void aes_test()
+void aes_test(int loops)
 {
   int i = 0;
   int j = 0;
@@ -160,7 +159,7 @@ void aes_test()
   unsigned char gold_plain[] = {0x58, 0xc8, 0xe0, 0x0b, 0x26, 0x31, 0x68, 0x6d, 0x54, 0xea, 0xb8, 0x4b, 0x91, 0xf0, 0xac, 0xa1 };
   unsigned char input[] = {0x58, 0xc8, 0xe0, 0x0b, 0x26, 0x31, 0x68, 0x6d, 0x54, 0xea, 0xb8, 0x4b, 0x91, 0xf0, 0xac, 0xa1 };
   
-  while(1) {
+  while(ind < loops) {
     for (k = 0; k < 4; k++) {
       if (k == 0) {
 	count = ECBGFSbox128_count;
@@ -225,8 +224,8 @@ void aes_test()
 	ind++;
 
 	//print an "I am alive" message every once in a awhile
-	if (ind % 250 == 0 && ind != 0) {
-	  printf("# %n, %i\r\n", ind, total_errors);
+	if (ind % CHANGE_RATE == 0 && ind != 0) {
+	  xil_printf("# %n, %i\r\n", ind, total_errors);
 	}
       }
     }
@@ -236,83 +235,30 @@ void aes_test()
 int main( void )
 {
   
-  //set up part
-  initMSP430();
+  //init part
+  init_platform();
   
   //print YAML header
-  printf("\r\n---\r\n");
-  printf("hw: msp430f2619\r\n");
-  printf("test: aes\r\n");
-  printf("mit: none\r\n");
-  printf("printing: %i\r\n", robust_printing);
-  printf("ver: 0.1\r\n");
-  printf("fac: LANSCE Nov 2015\r\n");
-  printf("d:\r\n");
+  print("\r\n---\r\n");
+  print("hw: Zybo ZYNQ7010\r\n");
+  print("test: aes\r\n");
+  print("mit: none\r\n");
+  xil_printf("printing: %i\r\n", ROBUST_PRINTING);
+  xil_printf("Loop count: %i\r\n", LOOP_COUNT);
+  xil_printf("input change rate: %i\r\n", CHANGE_RATE);
+  print("ver: 0.1-zybo\r\n");
+  print("fac: GSFC 2017\r\n");
+  print("d:\r\n");
   
-  //run test
-  aes_test();
-  
-  //Code should never get here.
+  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
+  asm("drseus_start_tag:");
+
+  //start test
+  aes_test(LOOP_COUNT);
+
+  asm("drseus_end_tag:");
+  print("safeword ");
+  cleanup_platform();
+
   return 0;
 }
-
-void initMSP430() {
-	//MSP430F2619 initialization code
-  WDTCTL = WDTPW + WDTHOLD;              // Stop WDT
-  if (CALBC1_1MHZ==0xFF)		 // If calibration constant erased
-    {
-      while(1);                          // do not load, trap CPU!!
-    }
-  DCOCTL = 0;                            // Select lowest DCOx and MODx settings
-  BCSCTL1 = CALBC1_1MHZ;                 // Set DCO
-  DCOCTL = CALDCO_1MHZ;
-  
-  initUART();
-}
-
-/**
- * Initializes the UART for 9600 baud with a RX interrupt
- **/
-void initUART(void) {
-
-  P3SEL = 0x30;                             // P3.4,5 = USCI_A0 TXD/RXD
-  UCA0CTL1 |= UCSSEL_2;                     // SMCLK
-  UCA0BR0 = 104;                            // 1MHz 9600; (104)decimal = 0x068h
-  UCA0BR1 = 0;                              // 1MHz 9600
-  UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
-  UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-}
-
-/**
- * puts() is used by printf() to display or send a string.. This function
- * determines where printf prints to. For this case it sends a string
- * out over UART, another option could be to display the string on an
- * LCD display.
- **/
-void puts(char *s) {
-  char c;
-  
-  // Loops through each character in string 's'
-  while (c = *s++) {
-    sendByte(c);
-  }
-}
-
-/**
- * puts() is used by printf() to display or send a character. This function
- * determines where printf prints to. For this case it sends a character
- * out over UART.
- **/
-void putc(char b) {
-  sendByte(b);
-}
-
-/**
- * Sends a single byte out through UART
- **/
-void sendByte(char byte )
-{
-  while (!(IFG2&UCA0TXIFG)); // USCI_A0 TX buffer ready?
-  UCA0TXBUF = byte; // TX -> RXed character
-}
-

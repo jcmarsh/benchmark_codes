@@ -67,31 +67,28 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 //
 //*****************************************************************************
 
+// Modified to run on a Zybo board. - JM
+// UART changed to 115200, 8 bits, no parity, 1 stop - JM
 
-
-#include <msp430.h>
-#include <string.h>
+#include "platform.h"
+#include <xgpio.h>
 #include <stdlib.h>
 
-#define		side				12
-#define		robust_printing			1
-#define		change_rate			500
+#define		SIDE				12
+#define		ROBUST_PRINTING			1
+#define		LOOP_COUNT			2
+#define		CHANGE_RATE			1
 
 
-int first_matrix[side][side];
-int second_matrix[side][side];
-unsigned long results_matrix[side][side];
-unsigned long golden_matrix[side][side];
+int first_matrix[SIDE][SIDE];
+int second_matrix[SIDE][SIDE];
+unsigned long results_matrix[SIDE][SIDE];
+unsigned long golden_matrix[SIDE][SIDE];
 
 unsigned long int ind = 0;
 int local_errors = 0;
 int in_block = 0;
 int seed_value = -1;
-
-void sendByte(char);
-void printf(char *, ...);
-void initUART(void);
-void initMSP430();
 
 void init_matrices() {
   int i = 0;
@@ -109,24 +106,24 @@ void init_matrices() {
   }
 
   //fill the matrices
-  for ( i = 0; i < side; i++ ){
-    for (j = 0; j < side; j++) {
+  for ( i = 0; i < SIDE; i++ ){
+    for (j = 0; j < SIDE; j++) {
       first_matrix[i][j] = rand();
       second_matrix[i][j] = rand();
     }
   }
 }
 
-void matrix_multiply(int f_matrix[][side], int s_matrix[][side], unsigned long r_matrix[][side]) {
+void matrix_multiply(int f_matrix[][SIDE], int s_matrix[][SIDE], unsigned long r_matrix[][SIDE]) {
   int i = 0;
   int j = 0;
   int k = 0;
   unsigned long sum = 0;
   
   //MM
-  for ( i = 0 ; i < side ; i++ ) {
-    for ( j = 0 ; j < side ; j++ ) {
-      for ( k = 0 ; k < side ; k++ ) {
+  for ( i = 0 ; i < SIDE ; i++ ) {
+    for ( j = 0 ; j < SIDE ; j++ ) {
+      for ( k = 0 ; k < SIDE ; k++ ) {
 	sum = sum + f_matrix[i][k]*s_matrix[k][j];
       }
       
@@ -136,31 +133,31 @@ void matrix_multiply(int f_matrix[][side], int s_matrix[][side], unsigned long r
   }
 }
 
-int checker(unsigned long golden_matrix[][side], unsigned long results_matrix[][side]) {
+int checker(unsigned long golden_matrix[][SIDE], unsigned long results_matrix[][SIDE]) {
   int first_error = 0;
   int num_of_errors = 0;
   int i = 0;
   int j = 0;
 
-  for(i=0; i<side; i++) {
-    for (j = 0; j < side; j++) {
+  for(i=0; i<SIDE; i++) {
+    for (j = 0; j < SIDE; j++) {
       if (golden_matrix[i][j] != results_matrix[i][j]) {
 	//checker found an error, print results to screen
 	if (!first_error) {
-	  if (!in_block && robust_printing) {
-	    printf(" - i: %n\r\n", ind);
-	    printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
+	  if (!in_block && ROBUST_PRINTING) {
+	    xil_printf(" - i: %n\r\n", ind);
+	    xil_printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
 	    first_error = 1;
 	    in_block = 1;
 	  }
-	  else if (in_block && robust_printing){
-	    printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
+	  else if (in_block && ROBUST_PRINTING){
+	    xil_printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
 	    first_error = 1;
 	  }
 	}
 	else {
-	  if (robust_printing)
-	    printf("%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
+	  if (ROBUST_PRINTING)
+	    xil_printf("%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
 	  
 	}
 	num_of_errors++;
@@ -169,25 +166,25 @@ int checker(unsigned long golden_matrix[][side], unsigned long results_matrix[][
   }
   
   if (first_error) {
-    printf("}\r\n");
+    xil_printf("}\r\n");
     first_error = 0;
   }
   
-  if (!robust_printing && (num_of_errors > 0)) {
+  if (!ROBUST_PRINTING && (num_of_errors > 0)) {
     if (!in_block) {
-      printf(" - i: %n\r\n", ind);
-      printf("   E: %i\r\n", num_of_errors);
+      xil_printf(" - i: %n\r\n", ind);
+      xil_printf("   E: %i\r\n", num_of_errors);
       in_block = 1;
     }
     else {
-      printf("   E: %i\r\n", num_of_errors);
+      xil_printf("   E: %i\r\n", num_of_errors);
     }
   }
   
   return num_of_errors;
 }
 
-void matrix_multiply_test() {
+void matrix_multiply_test(int loops) {
   
   //initialize variables
   int total_errors = 0;
@@ -196,7 +193,7 @@ void matrix_multiply_test() {
   //setup golden values
   matrix_multiply(first_matrix, second_matrix, golden_matrix);
   
-  while (1) {
+  while (ind < loops) {
     matrix_multiply(first_matrix, second_matrix, results_matrix);
     local_errors = checker(golden_matrix, results_matrix);
     
@@ -210,8 +207,8 @@ void matrix_multiply_test() {
     }
     
     //acking to see if alive, as well as changing input values
-    if (ind % change_rate == 0) {
-      printf("# %n, %i\r\n", ind, total_errors);
+    if (ind % CHANGE_RATE == 0) {
+      xil_printf("# %n, %i\r\n", ind, total_errors);
       seed_value = -1;
       init_matrices();
       //have to recompute the golden
@@ -229,90 +226,32 @@ void matrix_multiply_test() {
 
 int main()
 {
-  //initalize the part
-  initMSP430();
+  //init part
+  init_platform();
 
   //print the YAML header
-  printf("\r\n---\r\n");
-  printf("hw: msp430f2619\r\n");
-  printf("test: MM\r\n");
-  printf("mit: none\r\n");
-  printf("printing: %i\r\n", robust_printing);
-  printf("input change rate: %i\r\n", change_rate);
-  printf("Side matrix size: %i\r\n", side);
-  printf("ver: 0.1\r\n");
-  printf("fac: LANSCE Nov 2015\r\n");
-  printf("d:\r\n");
+  print("\r\n---\r\n");
+  print("hw: Zybo ZYNQ7010\r\n");
+  print("test: MM\r\n");
+  print("mit: none\r\n");
+  xil_printf("printing: %i\r\n", ROBUST_PRINTING);
+  xil_printf("SIDE matrix size: %i\r\n", SIDE);
+  xil_printf("Loop count: %i\r\n", LOOP_COUNT);
+  xil_printf("input change rate: %i\r\n", CHANGE_RATE);
+  print("ver: 0.1-zybo\r\n");
+  print("fac: GSFC 2017\r\n");
+  print("d:\r\n");
+
+  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
+  asm("drseus_start_tag:");
 
   //start test
-  matrix_multiply_test();
+  matrix_multiply_test(LOOP_COUNT);
+
+  asm("drseus_end_tag:");
+  print("safeword ");
+  cleanup_platform();
   
   return 0;
 
-}
-
-void initMSP430() {
-  //MSP430F2619 initialization code
-  WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
-  if (CALBC1_1MHZ==0xFF)		    // If calibration constant erased
-    {
-      while(1);                             // do not load, trap CPU!!
-    }
-  DCOCTL = 0;                               // Select lowest DCOx and MODx settings
-  BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
-  DCOCTL = CALDCO_1MHZ;
-  
-  initUART();
-}
-
-/**
- * Initializes the UART for 9600 baud with a RX interrupt
- **/
-void initUART(void) {
-  P3SEL = 0x30;                             // P3.4,5 = USCI_A0 TXD/RXD
-  UCA0CTL1 |= UCSSEL_2;                     // SMCLK
-  UCA0BR0 = 104;                            // 1MHz 9600; (104)decimal = 0x068h
-  UCA0BR1 = 0;                              // 1MHz 9600
-  UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
-  UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-}
-
-/**
- * puts() is used by printf() to display or send a string.. This function
- * determines where printf prints to. For this case it sends a string
- * out over UART, another option could be to display the string on an
- * LCD display.
- **/
-void puts(char *s) {
-  char c;
-  
-  // Loops through each character in string 's'
-  while (c = *s++) {
-    sendByte(c);
-  }
-}
-/**
- * puts() is used by printf() to display or send a character. This function
- * determines where printf prints to. For this case it sends a character
- * out over UART.
- **/
-void putc(char b) {
-  sendByte(b);
-}
-
-/**
- * Sends a single byte out through UART
- **/
-void sendByte(char byte )
-{
-  while (!(IFG2&UCA0TXIFG)); // USCI_A0 TX buffer ready?
-  UCA0TXBUF = byte; // TX -> RXed character
-}
-
-//  Echo back RXed character, confirm TX buffer is ready first
-#pragma vector=USCIAB0RX_VECTOR
-__interrupt void USCI0RX_ISR(void)
-{
-  while (!(IFG2&UCA0TXIFG));                // USCI_A0 TX buffer ready?
-  UCA0TXBUF = UCA0RXBUF;                    // TX -> RXed character
 }

@@ -74,26 +74,25 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 //
  *****************************************************************************/
 
-#include <msp430.h>
-#include <string.h>
+// Modified to run on a Zybo board. - JM
+// UART changed to 115200, 8 bits, no parity, 1 stop - JM
+
+#include "platform.h"
+#include <xgpio.h>
 #include <stdlib.h>
 
-#define		array_elements				580
-#define		robust_printing				1
-#define		change_rate				100
+#define		ARRAY_ELEMENTS				580
+#define		ROBUST_PRINTING				1
+#define		LOOP_COUNT				2
+#define		CHANGE_RATE				1
 
 unsigned long int ind = 0;
 int local_errors = 0;
 int in_block = 0;
 int seed_value = -1;
-int array[array_elements];
-int golden_array[array_elements];
-int golden_array_rev[array_elements];
-
-void sendByte(char);
-void printf(char *, ...);
-void initUART(void);
-void initMSP430();
+int array[ARRAY_ELEMENTS];
+int golden_array[ARRAY_ELEMENTS];
+int golden_array_rev[ARRAY_ELEMENTS];
 
 void init_array() {
   int i = 0;
@@ -112,7 +111,7 @@ void init_array() {
   }
   
   //fill the matrices
-  for ( i = 0; i < array_elements; i++ ){
+  for ( i = 0; i < ARRAY_ELEMENTS; i++ ){
     int val = rand();
     array[i] = val;
     golden_array[i] = val;
@@ -127,12 +126,47 @@ void init_array() {
 //
 //*****************************************************************************
 
-void quick_sort (int *a, int n) {
-  //TODO: user enters code
+void quick_sort (int *A, int len) {
+  if (len < 2) return;
+ 
+  int pivot = A[len / 2];
+ 
+  int i, j;
+  for (i = 0, j = len - 1; ; i++, j--) {
+    while (A[i] < pivot) i++;
+    while (A[j] > pivot) j--;
+ 
+    if (i >= j) break;
+ 
+    int temp = A[i];
+    A[i]     = A[j];
+    A[j]     = temp;
+  }
+ 
+  quick_sort(A, i);
+  quick_sort(A + i, len - i);
 }
 
-void quick_sort_rev (int *a, int n) {
-  //TODO: user enters code
+void quick_sort_rev (int *A, int len) {
+  if (len < 2) return;
+ 
+  int pivot = A[len / 2];
+ 
+  int i, j;
+  for (i = 0, j = len - 1; ; i++, j--) {
+    while (A[i] < pivot) i++;
+    while (A[j] > pivot) j--;
+ 
+    if (i >= j) break;
+ 
+    int temp = A[i];
+    A[i]     = A[j];
+    A[j]     = temp;
+  }
+ 
+  // TODO: Does this actually reverse the sort?
+  quick_sort_rev(A + i, len - i);
+  quick_sort_rev(A, i);
 }
 
 int checker(int golden_array[], int dut_array[], int sub_test) {
@@ -140,24 +174,24 @@ int checker(int golden_array[], int dut_array[], int sub_test) {
   int num_of_errors = 0;
   int i = 0;
 
-  for(i=0; i<array_elements; i++) {
+  for(i=0; i < ARRAY_ELEMENTS; i++) {
     if (golden_array[i] != dut_array[i]) {
       //an error is found, print the results
       if (!first_error) {
-	if (!in_block && robust_printing) {
-	  printf(" - i: %n, %i\r\n", ind, sub_test);
-	  printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
+	if (!in_block && ROBUST_PRINTING) {
+	  xil_printf(" - i: %n, %i\r\n", ind, sub_test);
+	  xil_printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
 	  first_error = 1;
 	  in_block = 1;
 	}
-	else if (in_block && robust_printing){
-	  printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
+	else if (in_block && ROBUST_PRINTING){
+	  xil_printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
 	  first_error = 1;
 	}
       }
       else {
-	if (robust_printing)
-	  printf("%i: [%x, %x],", i, golden_array[i], dut_array[i]);
+	if (ROBUST_PRINTING)
+	  xil_printf("%i: [%x, %x],", i, golden_array[i], dut_array[i]);
 	
       }
       num_of_errors++;
@@ -166,26 +200,26 @@ int checker(int golden_array[], int dut_array[], int sub_test) {
   
   //more printing
   if (first_error) {
-    printf("}\r\n");
+    xil_printf("}\r\n");
     first_error = 0;
   }
   
   //non-robust printing
-  if (!robust_printing && (num_of_errors > 0)) {
+  if (!ROBUST_PRINTING && (num_of_errors > 0)) {
     if (!in_block) {
-      printf(" - i: %n, %i\r\n", ind, sub_test);
-      printf("   E: %i\r\n", num_of_errors);
+      xil_printf(" - i: %n, %i\r\n", ind, sub_test);
+      xil_printf("   E: %i\r\n", num_of_errors);
       in_block = 1;
     }
     else {
-      printf("   E: %i\r\n", num_of_errors);
+      xil_printf("   E: %i\r\n", num_of_errors);
     }
   }
   
   return num_of_errors;
 }
 
-void qsort_test() {
+void qsort_test(int loops) {
   //initialize variables
   int total_errors = 0;
   int n = sizeof array / sizeof array[0];
@@ -198,7 +232,7 @@ void qsort_test() {
   quick_sort(golden_array, n);
   quick_sort_rev(golden_array_rev, n);
   
-  while (1) {
+  while (ind < loops) {
     for (i = 0; i < 4; i++) {
       //the first two sorts are forward
       if (i < 2) {
@@ -226,8 +260,8 @@ void qsort_test() {
     }
     
     //ack and change input arrays
-    if (ind % change_rate == 0) {
-      printf("# %n, %i\r\n", ind, total_errors);
+    if (ind % CHANGE_RATE == 0) {
+      xil_printf("# %n, %i\r\n", ind, total_errors);
       seed_value = -1;
       
       //init arrays with new values
@@ -246,95 +280,32 @@ void qsort_test() {
 
 int main()
 {
-  //init the part
-  initMSP430();
+  //init part
+  init_platform();
 
   //print the YAML header
-  printf("\r\n---\r\n");
-  printf("hw: msp430f2619\r\n");
-  printf("test: QSort\r\n");
-  printf("mit: none\r\n");
-  printf("printing: %i\r\n", robust_printing);
-  printf("input change rate: %i\r\n", change_rate);
-  printf("Array size: %i\r\n", array_elements);
-  printf("ver: 0.1\r\n");
-  printf("fac: LANSCE Nov 2015\r\n");
-  printf("d:\r\n");
+  print("\r\n---\r\n");
+  print("hw: Zybo ZYNQ7010\r\n");
+  print("test: QSort\r\n");
+  print("mit: none\r\n");
+  xil_printf("printing: %i\r\n", ROBUST_PRINTING);
+  xil_printf("Array size: %i\r\n", ARRAY_ELEMENTS);
+  xil_printf("Loop count: %i\r\n", LOOP_COUNT);
+  xil_printf("input change rate: %i\r\n", CHANGE_RATE);
+  print("ver: 0.1-zybo\r\n");
+  print("fac: GSFC 2017\r\n");
+  print("d:\r\n");
 
-  //start the test
-  qsort_test();
+  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
+  asm("drseus_start_tag:");
+
+  //start test
+  qsort_test(LOOP_COUNT);
+
+  asm("drseus_end_tag:");
+  print("safeword ");
+  cleanup_platform();
 
   return 0;
 
 }
-
-
-void initMSP430() {
-  //MSP430F2619 initialization code
-  WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
-  if (CALBC1_1MHZ==0xFF)		    // If calibration constant erased
-    {
-		while(1);                   // do not load, trap CPU!!
-    }
-  DCOCTL = 0;                               // Select lowest DCOx and MODx settings
-  BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
-  DCOCTL = CALDCO_1MHZ;
-  
-  initUART();
-}
-
-/**
- * Initializes the UART for 9600 baud with a RX interrupt
- **/
-void initUART(void) {
-  P3SEL = 0x30;                             // P3.4,5 = USCI_A0 TXD/RXD
-  UCA0CTL1 |= UCSSEL_2;                     // SMCLK
-  UCA0BR0 = 104;                            // 1MHz 9600; (104)decimal = 0x068h
-  UCA0BR1 = 0;                              // 1MHz 9600
-  UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
-  UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-}
-
-
-/**
- * puts() is used by printf() to display or send a string.. This function
- * determines where printf prints to. For this case it sends a string
- * out over UART, another option could be to display the string on an
- * LCD display.
- **/
-void puts(char *s) {
-  char c;
-  
-  // Loops through each character in string 's'
-  while (c = *s++) {
-    sendByte(c);
-  }
-}
-/**
- * puts() is used by printf() to display or send a character. This function
- * determines where printf prints to. For this case it sends a character
- * out over UART.
- **/
-void putc(char b) {
-  sendByte(b);
-}
-
-/**
- * Sends a single byte out through UART
- **/
-void sendByte(char byte )
-{
-  while (!(IFG2&UCA0TXIFG)); // USCI_A0 TX buffer ready?
-  UCA0TXBUF = byte; // TX -> RXed character
-}
-
-
-//  Echo back RXed character, confirm TX buffer is ready first
-#pragma vector=USCIAB0RX_VECTOR
-__interrupt void USCI0RX_ISR(void)
-{
-  
-  while (!(IFG2&UCA0TXIFG));                // USCI_A0 TX buffer ready?
-  UCA0TXBUF = UCA0RXBUF;                    // TX -> RXed character
-}
-

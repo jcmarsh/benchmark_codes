@@ -8,15 +8,18 @@ LD_SRCS += \
 
 C_SRCS += \
 ../src/main.c \
-../src/platform.c
+../src/platform.c \
+../src/TI_aes_128.c 
 
 OBJS += \
 ./src/main.o \
-./src/platform.o 
+./src/platform.o \
+./src/TI_aes_128.o
 
 C_DEPS += \
 ./src/main.d \
-./src/platform.d 
+./src/platform.d \
+./src/TI_aes_128.d
 
 
 # Each subdirectory must supply rules for building sources it contributes
