@@ -108,6 +108,9 @@ main(void)
 	//init part
 	init_platform();
 
+	/* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
+	asm("drseus_start_tag:");
+
 LCONT:
 
 /*
