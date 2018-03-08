@@ -296,15 +296,14 @@ int main()
   print("fac: GSFC 2017\r\n");
   print("d:\r\n");
 
-  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
-  asm("drseus_start_tag:");
-
-  //start test
+  // Warmup run
   qsort_test(LOOP_COUNT);
 
+  asm("drseus_start_tag:");
+  qsort_test(LOOP_COUNT);
   asm("drseus_end_tag:");
+
   print("safeword ");
-  cleanup_platform();
 
   return 0;
 
