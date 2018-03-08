@@ -208,7 +208,7 @@ void matrix_multiply_test(int loops) {
     
     //acking to see if alive, as well as changing input values
     if (ind % CHANGE_RATE == 0) {
-      xil_printf("# %lu, %i\r\n", ind, total_errors);
+      //xil_printf("# %lu, %i\r\n", ind, total_errors);
       seed_value = -1;
       init_matrices();
       //have to recompute the golden
@@ -242,16 +242,15 @@ int main()
   print("fac: GSFC 2017\r\n");
   print("d:\r\n");
 
-  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
-  asm("drseus_start_tag:");
-
-  //start test
+   // Warmup run
   matrix_multiply_test(LOOP_COUNT);
 
+  // Set a breakpoint on this label to let DrSEUS restart exectuion when ready
+  asm("drseus_start_tag:");
+  matrix_multiply_test(LOOP_COUNT);
   asm("drseus_end_tag:");
+
   print("safeword ");
-  cleanup_platform();
   
   return 0;
-
 }

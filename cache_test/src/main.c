@@ -193,9 +193,9 @@ void cache_test(int loops) {
     sum = calc_sum(array);
     
     //acking every few seconds to make certain the program is still alive/
-    if (ind % CHANGE_RATE == 0 && ind != 0) {
-      xil_printf("# %lu, %i, %i, %i\r\n", ind, total_errors, tests_with_errors, sum_errors);
-    }
+    //if (ind % CHANGE_RATE == 0 && ind != 0) {
+    //  xil_printf("# %lu, %i, %i, %i\r\n", ind, total_errors, tests_with_errors, sum_errors);
+    //}
     
     ind++;
     total_errors += local_errors;
@@ -227,15 +227,15 @@ int main(void)
   print("fac: GSFC 2017\r\n");
   print("d:\r\n");
 
-  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
-  asm("drseus_start_tag:");
-
-  //start test
+  // Warmup run
   cache_test(LOOP_COUNT);
 
+  // Set a breakpoint on this label to let DrSEUS restart exectuion when ready
+  asm("drseus_start_tag:");
+  cache_test(LOOP_COUNT);
   asm("drseus_end_tag:");
+
   print("safeword ");
-  cleanup_platform();
 
   return 0;
 }

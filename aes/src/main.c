@@ -224,9 +224,9 @@ void aes_test(int loops)
 	ind++;
 
 	//print an "I am alive" message every once in a awhile
-	if (ind % CHANGE_RATE == 0 && ind != 0) {
-	  xil_printf("# %lu, %i\r\n", ind, total_errors);
-	}
+	//if (ind % CHANGE_RATE == 0 && ind != 0) {
+	//  xil_printf("# %lu, %i\r\n", ind, total_errors);
+	//}
       }
     }
   }
@@ -249,16 +249,16 @@ int main( void )
   print("ver: 0.1-zybo\r\n");
   print("fac: GSFC 2017\r\n");
   print("d:\r\n");
-  
-  /* Set a breakpoint on this label to let DrSEUS restart exectuion when readdy. */
-  asm("drseus_start_tag:");
 
-  //start test
+  // Warmup run
   aes_test(LOOP_COUNT);
 
+  // Set a breakpoint on this label to let DrSEUS restart exectuion when ready
+  asm("drseus_start_tag:");
+  aes_test(LOOP_COUNT);
   asm("drseus_end_tag:");
+
   print("safeword ");
-  cleanup_platform();
 
   return 0;
 }
