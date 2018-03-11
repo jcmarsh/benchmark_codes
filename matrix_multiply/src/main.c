@@ -68,14 +68,14 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 //*****************************************************************************
 
 // Modified to run on a Zybo board. - JM
-// UART changed to 115200, 8 bits, no parity, 1 stop - JM
 
 #include "platform.h"
 #include <xgpio.h>
 #include <stdlib.h>
 
+// Update SIDE to change execution time - JM
 #define		SIDE				12
-#define		ROBUST_PRINTING			1
+#define		ROBUST_PRINTING			0
 #define		LOOP_COUNT			2
 #define		CHANGE_RATE			1
 
@@ -242,13 +242,33 @@ int main()
   print("fac: GSFC 2017\r\n");
   print("d:\r\n");
 
-   // Warmup run
-  matrix_multiply_test(LOOP_COUNT);
+
+  // setup golden values
+  init_matrices();
+  matrix_multiply(first_matrix, second_matrix, golden_matrix);
+
+  // Warm up seems not necessary here
+  matrix_multiply(first_matrix, second_matrix, results_matrix);
+
+  local_errors = checker(golden_matrix, results_matrix);
+  if (local_errors > 0) {
+    print("Errors detected in matrix\n"); // Should not happen
+  } else {
+    print("No errors detected in matrix\n");
+  }
+  local_errors = 0;
 
   // Set a breakpoint on this label to let DrSEUS restart exectuion when ready
   asm("drseus_start_tag:");
-  matrix_multiply_test(LOOP_COUNT);
+  matrix_multiply(first_matrix, second_matrix, results_matrix);
   asm("drseus_end_tag:");
+
+  local_errors = checker(golden_matrix, results_matrix);
+  if (local_errors > 0) {
+    print("Errors detected in matrix\n");
+  } else {
+    print("No errors detected in matrix\n");
+  }
 
   print("safeword ");
   
