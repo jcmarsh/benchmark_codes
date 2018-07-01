@@ -74,7 +74,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <stdlib.h>
 
 // Update SIDE to change execution time - JM
-#define		SIDE				12
+//#define		SIDE				12
+#define		SIDE				18
 #define		ROBUST_PRINTING			0
 #define		LOOP_COUNT			2
 #define		CHANGE_RATE			1
