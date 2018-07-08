@@ -73,6 +73,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <xgpio.h>
 #include <stdlib.h>
 
+// To flush cache
+#include <xil_cache_l.h>
+
 // Update SIDE to change execution time - JM
 //#define		SIDE				12
 #define		SIDE				18
@@ -258,6 +261,8 @@ int main()
     print("No errors detected in matrix\n");
   }
   local_errors = 0;
+
+  // Xil_L2CacheFlush();
 
   // Set a breakpoint on this label to let DrSEUS restart exectuion when ready
   asm("drseus_start_tag:");
