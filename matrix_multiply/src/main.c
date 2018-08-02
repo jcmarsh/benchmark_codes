@@ -276,6 +276,8 @@ int main()
     print("No errors detected in matrix\n");
   }
 
+  exit_platform();
+
   print("safeword ");
   
   return 0;
