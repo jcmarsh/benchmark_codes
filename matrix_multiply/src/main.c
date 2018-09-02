@@ -252,6 +252,7 @@ int main()
   matrix_multiply(first_matrix, second_matrix, golden_matrix);
 
   // Warm up seems not necessary here
+  /*
   matrix_multiply(first_matrix, second_matrix, results_matrix);
 
   local_errors = checker(golden_matrix, results_matrix);
@@ -261,8 +262,9 @@ int main()
     print("No errors detected in matrix\n");
   }
   local_errors = 0;
+  */
 
-  // Xil_L2CacheFlush();
+  Xil_L2CacheFlush();
 
   // Set a breakpoint on this label to let DrSEUS restart exectuion when ready
   asm("drseus_start_tag:");
