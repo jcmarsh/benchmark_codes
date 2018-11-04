@@ -69,13 +69,14 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 
 
 
-#include <msp430.h>
+//#include <msp430.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-#define		side				12
-#define		robust_printing			1
-#define		change_rate			500
+#define		side				22
+#define		robust_printing			0
+#define		change_rate			1
 
 
 int first_matrix[side][side];
@@ -87,11 +88,6 @@ unsigned long int ind = 0;
 int local_errors = 0;
 int in_block = 0;
 int seed_value = -1;
-
-void sendByte(char);
-void printf(char *, ...);
-void initUART(void);
-void initMSP430();
 
 void init_matrices() {
   int i = 0;
@@ -148,19 +144,19 @@ int checker(unsigned long golden_matrix[][side], unsigned long results_matrix[][
 	//checker found an error, print results to screen
 	if (!first_error) {
 	  if (!in_block && robust_printing) {
-	    printf(" - i: %n\r\n", ind);
-	    printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
+	    printf(" - i: %ld\r\n", ind);
+	    printf("   E: {%i_%i: [%lx, %lx],", i, j, golden_matrix[i][j], results_matrix[i][j]);
 	    first_error = 1;
 	    in_block = 1;
 	  }
 	  else if (in_block && robust_printing){
-	    printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
+	    printf("   E: {%i_%i: [%lx, %lx],", i, j, golden_matrix[i][j], results_matrix[i][j]);
 	    first_error = 1;
 	  }
 	}
 	else {
 	  if (robust_printing)
-	    printf("%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
+	    printf("%i_%i: [%lx, %lx],", i, j, golden_matrix[i][j], results_matrix[i][j]);
 	  
 	}
 	num_of_errors++;
@@ -175,7 +171,7 @@ int checker(unsigned long golden_matrix[][side], unsigned long results_matrix[][
   
   if (!robust_printing && (num_of_errors > 0)) {
     if (!in_block) {
-      printf(" - i: %n\r\n", ind);
+      printf(" - i: %ld\r\n", ind);
       printf("   E: %i\r\n", num_of_errors);
       in_block = 1;
     }
@@ -211,7 +207,7 @@ void matrix_multiply_test() {
     
     //acking to see if alive, as well as changing input values
     if (ind % change_rate == 0) {
-      printf("# %n, %i\r\n", ind, total_errors);
+      printf("# %ld, %i\r\n", ind, total_errors);
       seed_value = -1;
       init_matrices();
       //have to recompute the golden
@@ -229,9 +225,6 @@ void matrix_multiply_test() {
 
 int main()
 {
-  //initalize the part
-  initMSP430();
-
   //print the YAML header
   printf("\r\n---\r\n");
   printf("hw: msp430f2619\r\n");
@@ -245,74 +238,20 @@ int main()
   printf("d:\r\n");
 
   //start test
-  matrix_multiply_test();
-  
+  init_matrices();
+  matrix_multiply(first_matrix, second_matrix, golden_matrix);
+
+  matrix_multiply(first_matrix, second_matrix, results_matrix);
+
+  local_errors = checker(golden_matrix, results_matrix);
+  if (local_errors > 0) {
+    printf("Errors detected in matrix\n");
+  } else {
+    printf("No errors detected in matrix\n");
+  }
+
+
   return 0;
 
 }
 
-void initMSP430() {
-  //MSP430F2619 initialization code
-  WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
-  if (CALBC1_1MHZ==0xFF)		    // If calibration constant erased
-    {
-      while(1);                             // do not load, trap CPU!!
-    }
-  DCOCTL = 0;                               // Select lowest DCOx and MODx settings
-  BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
-  DCOCTL = CALDCO_1MHZ;
-  
-  initUART();
-}
-
-/**
- * Initializes the UART for 9600 baud with a RX interrupt
- **/
-void initUART(void) {
-  P3SEL = 0x30;                             // P3.4,5 = USCI_A0 TXD/RXD
-  UCA0CTL1 |= UCSSEL_2;                     // SMCLK
-  UCA0BR0 = 104;                            // 1MHz 9600; (104)decimal = 0x068h
-  UCA0BR1 = 0;                              // 1MHz 9600
-  UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
-  UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-}
-
-/**
- * puts() is used by printf() to display or send a string.. This function
- * determines where printf prints to. For this case it sends a string
- * out over UART, another option could be to display the string on an
- * LCD display.
- **/
-void puts(char *s) {
-  char c;
-  
-  // Loops through each character in string 's'
-  while (c = *s++) {
-    sendByte(c);
-  }
-}
-/**
- * puts() is used by printf() to display or send a character. This function
- * determines where printf prints to. For this case it sends a character
- * out over UART.
- **/
-void putc(char b) {
-  sendByte(b);
-}
-
-/**
- * Sends a single byte out through UART
- **/
-void sendByte(char byte )
-{
-  while (!(IFG2&UCA0TXIFG)); // USCI_A0 TX buffer ready?
-  UCA0TXBUF = byte; // TX -> RXed character
-}
-
-//  Echo back RXed character, confirm TX buffer is ready first
-#pragma vector=USCIAB0RX_VECTOR
-__interrupt void USCI0RX_ISR(void)
-{
-  while (!(IFG2&UCA0TXIFG));                // USCI_A0 TX buffer ready?
-  UCA0TXBUF = UCA0RXBUF;                    // TX -> RXed character
-}
