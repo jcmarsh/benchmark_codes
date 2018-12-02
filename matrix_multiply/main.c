@@ -79,7 +79,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 // Update SIDE to change execution time - JM
 #define SIDE             12
 #define ROBUST_PRINTING   0
-#define LOOP_COUNT        2
+#define LOOP_COUNT       16
 #define CHANGE_RATE     500
 
 
@@ -87,25 +87,12 @@ int first_matrix[SIDE][SIDE];
 int second_matrix[SIDE][SIDE];
 unsigned long results_matrix[LOOP_COUNT][SIDE][SIDE];
 
-unsigned long int ind = 0;
 int local_errors = 0;
 int in_block = 0;
-int seed_value = -1;
 
 void init_matrices() {
   int i = 0;
   int j = 0;
-
-  //seed the random number generator
-  //the method is designed to reset SEUs in the matrices, using the current seed value
-  //that way each test starts error free
-  if (seed_value == -1) {
-    srand(ind);
-    seed_value = ind;
-  }
-  else {
-    srand(seed_value);
-  }
 
   //fill the matrices
   for ( i = 0; i < SIDE; i++ ){
@@ -141,6 +128,8 @@ int main()
   //init part
   init_platform();
 
+  srand(1);
+
   //print the YAML header
   print("\r\n---\r\n");
   print("hw: Zybo ZYNQ7010\r\n");
@@ -160,7 +149,6 @@ int main()
   asm("drseus_start_tag:");
   for (index = 0; index < LOOP_COUNT; index++) {
     init_matrices();
-    ind++;
     matrix_multiply(first_matrix, second_matrix, results_matrix[index]);
   }
   asm("drseus_end_tag:");
