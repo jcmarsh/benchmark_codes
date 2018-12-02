@@ -77,17 +77,15 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <xil_cache_l.h>
 
 // Update SIDE to change execution time - JM
-//#define		SIDE				12
-#define		SIDE				22
-#define		ROBUST_PRINTING			0
-#define		LOOP_COUNT			2
-#define		CHANGE_RATE			1
+#define SIDE             12
+#define ROBUST_PRINTING   0
+#define LOOP_COUNT        2
+#define CHANGE_RATE     500
 
 
 int first_matrix[SIDE][SIDE];
 int second_matrix[SIDE][SIDE];
-unsigned long results_matrix[SIDE][SIDE];
-unsigned long golden_matrix[SIDE][SIDE];
+unsigned long results_matrix[LOOP_COUNT][SIDE][SIDE];
 
 unsigned long int ind = 0;
 int local_errors = 0;
@@ -137,99 +135,9 @@ void matrix_multiply(int f_matrix[][SIDE], int s_matrix[][SIDE], unsigned long r
   }
 }
 
-int checker(unsigned long golden_matrix[][SIDE], unsigned long results_matrix[][SIDE]) {
-  int first_error = 0;
-  int num_of_errors = 0;
-  int i = 0;
-  int j = 0;
-
-  for(i=0; i<SIDE; i++) {
-    for (j = 0; j < SIDE; j++) {
-      if (golden_matrix[i][j] != results_matrix[i][j]) {
-	//checker found an error, print results to screen
-	if (!first_error) {
-	  if (!in_block && ROBUST_PRINTING) {
-	    xil_printf(" - i: %lu\r\n", ind);
-	    xil_printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
-	    first_error = 1;
-	    in_block = 1;
-	  }
-	  else if (in_block && ROBUST_PRINTING){
-	    xil_printf("   E: {%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
-	    first_error = 1;
-	  }
-	}
-	else {
-	  if (ROBUST_PRINTING)
-	    xil_printf("%i_%i: [%x, %x],", i, j, golden_matrix[i][j], results_matrix[i][j]);
-	  
-	}
-	num_of_errors++;
-      }
-    }
-  }
-  
-  if (first_error) {
-    xil_printf("}\r\n");
-    first_error = 0;
-  }
-  
-  if (!ROBUST_PRINTING && (num_of_errors > 0)) {
-    if (!in_block) {
-      xil_printf(" - i: %lu\r\n", ind);
-      xil_printf("   E: %i\r\n", num_of_errors);
-      in_block = 1;
-    }
-    else {
-      xil_printf("   E: %i\r\n", num_of_errors);
-    }
-  }
-  
-  return num_of_errors;
-}
-
-void matrix_multiply_test(int loops) {
-  
-  //initialize variables
-  int total_errors = 0;
-  
-  init_matrices();
-  //setup golden values
-  matrix_multiply(first_matrix, second_matrix, golden_matrix);
-  
-  while (ind < loops) {
-    matrix_multiply(first_matrix, second_matrix, results_matrix);
-    local_errors = checker(golden_matrix, results_matrix);
-    
-    //if there is an error, fix the input matrics
-    //golden is recomputed so that the code doesn't
-    //have to figure out if the error was in the results
-    //or golden matrix
-    if (local_errors > 0) {
-      init_matrices();
-      matrix_multiply(first_matrix, second_matrix, golden_matrix);
-    }
-    
-    //acking to see if alive, as well as changing input values
-    if (ind % CHANGE_RATE == 0) {
-      //xil_printf("# %lu, %i\r\n", ind, total_errors);
-      seed_value = -1;
-      init_matrices();
-      //have to recompute the golden
-      matrix_multiply(first_matrix, second_matrix, golden_matrix);
-    }
-    
-    //reset vars and such
-    ind++;
-    total_errors += local_errors;
-    local_errors = 0;
-    in_block = 0;
-  }
-
-}
-
 int main()
 {
+  int index = 0, i = 0, j = 0;
   //init part
   init_platform();
 
@@ -246,36 +154,26 @@ int main()
   print("fac: GSFC 2017\r\n");
   print("d:\r\n");
 
-
-  // setup golden values
-  init_matrices();
-  matrix_multiply(first_matrix, second_matrix, golden_matrix);
-
-  // Warm up seems not necessary here
-  /*
-  matrix_multiply(first_matrix, second_matrix, results_matrix);
-
-  local_errors = checker(golden_matrix, results_matrix);
-  if (local_errors > 0) {
-    print("Errors detected in matrix\n"); // Should not happen
-  } else {
-    print("No errors detected in matrix\n");
-  }
-  local_errors = 0;
-  */
-
   Xil_L2CacheFlush();
 
   // Set a breakpoint on this label to let DrSEUS restart exectuion when ready
   asm("drseus_start_tag:");
-  matrix_multiply(first_matrix, second_matrix, results_matrix);
+  for (index = 0; index < LOOP_COUNT; index++) {
+    init_matrices();
+    ind++;
+    matrix_multiply(first_matrix, second_matrix, results_matrix[index]);
+  }
   asm("drseus_end_tag:");
-
-  local_errors = checker(golden_matrix, results_matrix);
-  if (local_errors > 0) {
-    print("Errors detected in matrix\n");
-  } else {
-    print("No errors detected in matrix\n");
+  Xil_L2CacheFlush();
+  
+  for (index = 0; index < LOOP_COUNT; index++) {
+    xil_printf("Result Matrix %d:\n", index);
+    for (i = 0; i < SIDE; i++) {
+      for (j = 0; j < SIDE; j++) {
+        xil_printf("%d ", results_matrix[index][i][j]);
+      }
+      xil_printf("\n");
+    }
   }
 
   exit_platform();
