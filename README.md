@@ -54,3 +54,15 @@ text.
 Contact
 
 Heather Quinn, hquinn at lanl dot gov
+
+# Modifications
+
+The zybo branch is intended to run on a Digilent Zybo board, with specific cache configuration and inputs for testing with [OCD-Based Cache Tracer](https://github.com/jcmarsh/OCD_Cache_Tracer).
+The zybo has dual ARM cores, only one of which is used.
+
+The p2020 branch is intended for use on a Simics simulated p2020 processor, with the inputs indentical to the zybo branch.
+The p2020 is PowerPC based, and 32 bit, so `sudo apt-get install gcc-powerpc-linux-gnu` should give you the needed cross-compilation toolchain.
+
+Creating a new campaign fails (needs the p2020 targets in Simics):
+
+`drseus.py new --arch p2020 --simics`

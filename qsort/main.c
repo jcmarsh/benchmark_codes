@@ -77,8 +77,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 // Modified to run on a Zybo board. - JM
 // UART changed to 115200, 8 bits, no parity, 1 stop - JM
 
-#include "platform.h"
-#include <xgpio.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define		ARRAY_ELEMENTS				580
@@ -179,19 +178,19 @@ int checker(int golden_array[], int dut_array[], int sub_test) {
       //an error is found, print the results
       if (!first_error) {
 	if (!in_block && ROBUST_PRINTING) {
-	  xil_printf(" - i: %lu, %i\r\n", ind, sub_test);
-	  xil_printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
+	  printf(" - i: %lu, %i\r\n", ind, sub_test);
+	  printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
 	  first_error = 1;
 	  in_block = 1;
 	}
 	else if (in_block && ROBUST_PRINTING){
-	  xil_printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
+	  printf("   E: {%i: [%x, %x],", i, golden_array[i], dut_array[i]);
 	  first_error = 1;
 	}
       }
       else {
 	if (ROBUST_PRINTING)
-	  xil_printf("%i: [%x, %x],", i, golden_array[i], dut_array[i]);
+	  printf("%i: [%x, %x],", i, golden_array[i], dut_array[i]);
 	
       }
       num_of_errors++;
@@ -200,19 +199,19 @@ int checker(int golden_array[], int dut_array[], int sub_test) {
   
   //more printing
   if (first_error) {
-    xil_printf("}\r\n");
+    printf("}\r\n");
     first_error = 0;
   }
   
   //non-robust printing
   if (!ROBUST_PRINTING && (num_of_errors > 0)) {
     if (!in_block) {
-      xil_printf(" - i: %lu, %i\r\n", ind, sub_test);
-      xil_printf("   E: %i\r\n", num_of_errors);
+      printf(" - i: %lu, %i\r\n", ind, sub_test);
+      printf("   E: %i\r\n", num_of_errors);
       in_block = 1;
     }
     else {
-      xil_printf("   E: %i\r\n", num_of_errors);
+      printf("   E: %i\r\n", num_of_errors);
     }
   }
   
@@ -261,7 +260,7 @@ void qsort_test(int loops) {
     
     //ack and change input arrays
     if (ind % CHANGE_RATE == 0) {
-      xil_printf("# %lu, %i\r\n", ind, total_errors);
+      printf("# %lu, %i\r\n", ind, total_errors);
       seed_value = -1;
       
       //init arrays with new values
@@ -281,20 +280,20 @@ void qsort_test(int loops) {
 int main()
 {
   //init part
-  init_platform();
+  //init_platform();
 
   //print the YAML header
-  print("\r\n---\r\n");
-  print("hw: Zybo ZYNQ7010\r\n");
-  print("test: QSort\r\n");
-  print("mit: none\r\n");
-  xil_printf("printing: %i\r\n", ROBUST_PRINTING);
-  xil_printf("Array size: %i\r\n", ARRAY_ELEMENTS);
-  xil_printf("Loop count: %i\r\n", LOOP_COUNT);
-  xil_printf("input change rate: %i\r\n", CHANGE_RATE);
-  print("ver: 0.1-zybo\r\n");
-  print("fac: GSFC 2017\r\n");
-  print("d:\r\n");
+  printf("\r\n---\r\n");
+  printf("hw: Zybo ZYNQ7010\r\n");
+  printf("test: QSort\r\n");
+  printf("mit: none\r\n");
+  printf("printing: %i\r\n", ROBUST_PRINTING);
+  printf("Array size: %i\r\n", ARRAY_ELEMENTS);
+  printf("Loop count: %i\r\n", LOOP_COUNT);
+  printf("input change rate: %i\r\n", CHANGE_RATE);
+  printf("ver: 0.1-zybo\r\n");
+  printf("fac: GSFC 2017\r\n");
+  printf("d:\r\n");
 
   // Warmup run
   qsort_test(LOOP_COUNT);
@@ -303,7 +302,7 @@ int main()
   qsort_test(LOOP_COUNT);
   asm("drseus_end_tag:");
 
-  print("safeword ");
+  printf("safeword ");
 
   return 0;
 
